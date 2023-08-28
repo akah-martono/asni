@@ -1,28 +1,44 @@
 <?php
+/**
+ * The core plugin class
+ * 
+ * @link https://github.com/akah-martono/asni
+ * @package ASNI
+ * 
+ * @author Akah Martono <https://www.subarkah.com>
+ * @since 0.1
+ */
 namespace ASNI;
 
 class Asni{
     /** @return void  */
     public static function init() {
         add_action( 'template_redirect', function() {
-            // only for admin
+            
+            // only avaiblable for admin
             if ( !current_user_can( 'manage_options' ) ) return;
 
             global $wp;
+            $more_info = '<br>For more information, please read our <a href="https://www.subarkah.com/asni" target="_blank"> documentation</a>';
+            
             if( $wp->request === 'asni/create-file'){
-                self::create_file_query_param();
+                if( !self::create_file_by_query_param() ){
+                    echo wp_kses_post( $more_info );
+                }
                 die;
             }
         
             if( $wp->request === 'asni/create-class'){
-                self::create_class_by_query_param();
+                if( !self::create_class_by_query_param() ) {
+                    echo wp_kses_post( $more_info );
+                }
                 die;
             }    
         } );
     }
 
     /** @return int|false  */
-    public static function create_file_query_param(){
+    public static function create_file_by_query_param(){
         $file_name = self::get_query_parameter_value('file_name', true);
         if ( !$file_name ) return false;
 
@@ -31,7 +47,7 @@ class Asni{
             return false;
         }
 
-        // buat lower case semua agar standard
+        // converted to lowercase in order to standardize
         $name = strtolower($file_name);
 
         $name = pathinfo($file_name, PATHINFO_FILENAME);
@@ -49,7 +65,7 @@ class Asni{
             return self::create_js_file($name, true);
         }
 
-        echo esc_html( $file_name ) . ' creation FAILED!, please our <a href="https://www.subarkah.com/asni" target="_blank"> documentation</a>';
+        echo 'Only file with php, css, and js extension are allowed.';
         return false;
     }
 
@@ -58,12 +74,12 @@ class Asni{
         $class_name = self::get_query_parameter_value('class_name', true);
         if ( !$class_name ) return false;
         
-        //jika nama class tidak valid
         if( !self::is_valid_class_name($class_name) ) {
             echo 'Invalid class name: ' . esc_html( $class_name ) ;
             return false;
         }
         
+        //convert class_name to file_name (make sure it's inline with autoloader)
         $class_file = str_replace("_", '-', $class_name);
         $class_file = strtolower($class_file) . '.php';   
 

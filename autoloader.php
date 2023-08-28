@@ -1,4 +1,14 @@
 <?php
+/**
+ * This file for autoloader of ASNI namespace
+ * 
+ * @link https://github.com/akah-martono/asni
+ * @package ASNI
+ * 
+ * @author Akah Martono <https://www.subarkah.com>
+ * @since 0.1
+ */
+
 // If this file is called directly, abort.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
