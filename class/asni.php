@@ -5,26 +5,29 @@ class Asni{
     /** @return void  */
     public static function init() {
         add_action( 'template_redirect', function() {
+            // only for admin
+            if ( !current_user_can( 'manage_options' ) ) return;
+
             global $wp;
             if( $wp->request === 'asni/create-file'){
-                Asni::create_file_by_url();
+                self::create_file_query_param();
                 die;
             }
         
             if( $wp->request === 'asni/create-class'){
-                Asni::create_class_by_url();
+                self::create_class_by_query_param();
                 die;
             }    
         } );
     }
 
     /** @return int|false  */
-    public static function create_file_by_url(){
+    public static function create_file_query_param(){
         $file_name = self::get_query_parameter_value('file_name', true);
         if ( !$file_name ) return false;
 
         if( !self::is_valid_file_name( $file_name ) ) {
-            echo "Invalid filename: $file_name";
+            echo 'Invalid filename: ' . esc_html( $file_name );
             return false;
         }
 
@@ -46,18 +49,18 @@ class Asni{
             return self::create_js_file($name, true);
         }
 
-        echo "$file_name creation failed!";
+        echo esc_html( $file_name ) . ' creation FAILED!, please our <a href="https://www.subarkah.com/asni" target="_blank"> documentation</a>';
         return false;
     }
 
     /** @return int|false  */
-    public static function create_class_by_url(){
+    public static function create_class_by_query_param(){
         $class_name = self::get_query_parameter_value('class_name', true);
         if ( !$class_name ) return false;
         
         //jika nama class tidak valid
         if( !self::is_valid_class_name($class_name) ) {
-            echo "Invalid class name: $class_name";
+            echo 'Invalid class name: ' . esc_html( $class_name ) ;
             return false;
         }
         
@@ -65,7 +68,7 @@ class Asni{
         $class_file = strtolower($class_file) . '.php';   
 
         if( !self::is_valid_file_name( $class_file ) ) {
-            echo "Invalid filename: $class_file";
+            echo 'Invalid file name for class ' . esc_html( $class_name ) ;
             return false;
         }
 
@@ -151,12 +154,12 @@ class Asni{
         if( $echo_result ){
             $str_result = '';
             if ( $result === false ){
-                $str_result =  "$file: creation failed!";
+                $str_result =  "$file: creation FAILED!";
             } elseif ( $result === 'exist' ){
                 $result = false;
-                $str_result =  "$file: already exist!";
+                $str_result =  "$file: already EXIST!";
             } else {
-                $str_result =  "$file: created!";
+                $str_result =  "$file: created SUCCESSFULLY!";
             }
 
             echo esc_html( $str_result );
@@ -194,12 +197,11 @@ class Asni{
 
         $value = $_REQUEST[$param];
 
-        //jika paramater kosong/salah
         if( '' === $value ) {
             if ( $echo_result ) echo 'Value of "' . esc_html($param) . '" is empty!';
             return false;
         }
         
-        return $value;
+        return sanitize_text_field( $value ) ;
     }    
 }

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ASNI - Functionality Plugin
  * Plugin URI: https://www.subarkah.com/asni
- * Description:  WordPress functionality plugin | <a href="/asni/create-file/?file_name=" target="_blank">Create File</a> | <a href="/asni/create-class/?class_name=" target="_blank">Create Class</a>
+ * Description:  WordPress functionality plugin | <a href="/asni/create-file/?file_name=">Create File</a> | <a href="/asni/create-class/?class_name=">Create Class</a>
  * Version: 0.1
  * Requires at least: 6.0
  * Requires PHP: 8.0
