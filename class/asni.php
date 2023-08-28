@@ -22,23 +22,30 @@ class Asni{
             $more_info = '<br>For more information, please read our <a href="https://www.subarkah.com/asni" target="_blank"> documentation</a>';
             
             if( $wp->request === 'asni/create-file'){
-                if( !self::create_file_by_query_param() ){
+                if( false === self::create_file_by_query_param() ){
                     echo wp_kses_post( $more_info );
                 }
                 die;
             }
         
             if( $wp->request === 'asni/create-class'){
-                if( !self::create_class_by_query_param() ) {
+                if( false === self::create_class_by_query_param() ) {
                     echo wp_kses_post( $more_info );
                 }
                 die;
-            }    
+            }
+
+            if( $wp->request === 'asni/migrate'){
+                if( false === self::migrate_by_query_param() ) {
+                    echo wp_kses_post( $more_info );
+                }
+                die;
+            }               
         } );
     }
 
     /** @return int|false  */
-    public static function create_file_by_query_param(){
+    private static function create_file_by_query_param(){
         $file_name = self::get_query_parameter_value('file_name', true);
         if ( !$file_name ) return false;
 
@@ -47,7 +54,7 @@ class Asni{
             return false;
         }
 
-        // converted to lowercase in order to standardize
+        // convert to lowercase in order to standardize
         $name = strtolower($file_name);
 
         $name = pathinfo($file_name, PATHINFO_FILENAME);
@@ -70,7 +77,7 @@ class Asni{
     }
 
     /** @return int|false  */
-    public static function create_class_by_query_param(){
+    private static function create_class_by_query_param(){
         $class_name = self::get_query_parameter_value('class_name', true);
         if ( !$class_name ) return false;
         
@@ -91,8 +98,50 @@ class Asni{
         $name = pathinfo($class_file, PATHINFO_FILENAME);
 
         return self::create_class_file($class_name, $name, true);
-
     }
+    
+    /** @return bool  */
+    private static function migrate_by_query_param() {
+        $new_plugin_dir = self::get_query_parameter_value('new_dir', true);
+        if ( !$new_plugin_dir ) return false;
+
+        $new_plugin_path = WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . $new_plugin_dir . DIRECTORY_SEPARATOR;
+
+        if ( !( file_exists( $new_plugin_path ) && is_dir( $new_plugin_path ) ) ) {
+            echo 'New Plugin Dir: ' . esc_html($new_plugin_path) . ' does not exist';
+            return false;
+        }
+
+        self::copy_files(
+            ASNI_CLASS_DIR, 
+            $new_plugin_path . 'class' . DIRECTORY_SEPARATOR, 
+            ['extension'=>'php', 'exclude'=>['asni.php','index.php']], 
+            true
+        );
+        
+        self::copy_files(
+            ASNI_PHP_DIR, 
+            $new_plugin_path . 'php' . DIRECTORY_SEPARATOR, 
+            ['extension'=>'php', 'exclude'=>'index.php'], 
+            true
+        );
+
+        self::copy_files(
+            ASNI_CSS_DIR, 
+            $new_plugin_path . 'css' . DIRECTORY_SEPARATOR, 
+            ['extension'=>'css'], 
+            true
+        );
+        
+        self::copy_files(
+            ASNI_JS_DIR, 
+            $new_plugin_path  . 'js' . DIRECTORY_SEPARATOR, 
+            ['extension'=>'js'], 
+            true
+        );
+
+        return true;
+    }    
 
     /**
      * @param string $file_name 
@@ -109,7 +158,7 @@ class Asni{
         }
         EOF;
 
-        return self::create_file( ASNI_PHP_DIR . "$file_name.php", $contents, true );
+        return self::create_file( ASNI_PHP_DIR . "$file_name.php", $contents, $echo_result );
     }
 
     /**
@@ -122,17 +171,12 @@ class Asni{
         <?php 
         namespace ASNI;
 
-        // If this file is called directly, abort.
-        if ( ! defined( 'ABSPATH' ) ) {
-            exit;
-        }
-
         class $class_name{
 
         }
         EOF;
 
-        return self::create_file( ASNI_CLASS_DIR . "$file_name.php", $contents, true );
+        return self::create_file( ASNI_CLASS_DIR . "$file_name.php", $contents, $echo_result );
     }
 
     /**
@@ -141,7 +185,7 @@ class Asni{
      * @return int|false  
      */
     public static function create_css_file( $file_name, $echo_result = false ){
-        return self::create_file( ASNI_CSS_DIR . "$file_name.css", '', true );
+        return self::create_file( ASNI_CSS_DIR . "$file_name.css", '', $echo_result );
     }
 
     /**
@@ -150,7 +194,7 @@ class Asni{
      * @return int|false  
      */
     public static function create_js_file( $file_name, $echo_result = false ){
-        return self::create_file( ASNI_JS_DIR . "$file_name.js", '', true );
+        return self::create_file( ASNI_JS_DIR . "$file_name.js", '', $echo_result );
     }
     
     /**
@@ -203,21 +247,81 @@ class Asni{
 
     /**
      * @param string $param 
+     * @param bool $echo_error 
      * @return string|false 
      */
-    public static function get_query_parameter_value($param, $echo_result = false) {
+    private static function get_query_parameter_value($param, $echo_error = false) {
         if( !array_key_exists ($param, $_REQUEST ) ){
-            if ( $echo_result ) echo 'Parameter "' . esc_html($param) . '" does not exist!';
+            if ( $echo_error ) echo 'Parameter "' . esc_html($param) . '" does not exist!';
             return false;            
         }
 
         $value = $_REQUEST[$param];
 
         if( '' === $value ) {
-            if ( $echo_result ) echo 'Value of "' . esc_html($param) . '" is empty!';
+            if ( $echo_error ) echo 'Value of "' . esc_html($param) . '" is empty!';
             return false;
         }
         
         return sanitize_text_field( $value ) ;
-    }    
+    }
+
+    /**
+     * @param string $source_path full path (included separator at the end)
+     * @param string $destination_path full path (included separator at the end)
+     * @param array $filter 
+     * @param bool $echo_result 
+     * @return void 
+     */
+    private static function copy_files($source_path, $destination_path, $filter = [], $echo_result = false){        
+        $extension = array_key_exists('extension', $filter)? $filter['extension'] : [];        
+        $exclude = array_key_exists('exclude', $filter)? $filter['exclude'] : [];
+
+        if ( is_string($extension) ) {
+            $extension = [$extension]; 
+        }
+
+        if ( is_string($exclude) ) {
+            $exclude = [$exclude];
+        }
+
+        $str_result = '';
+
+        if ( !( file_exists( $source_path ) && is_dir( $source_path ) ) ) {
+            if( $echo_result ) echo 'Source: ' . esc_html($source_path) . ' does not exist';
+            return;
+        }
+
+        if (!( is_dir( $destination_path ) )){
+            if( $echo_result ) echo 'Destination: ' . esc_html($destination_path) . ' does not exist';
+            return;
+        }
+
+        $copied = 0;
+        $files = scandir($source_path);  
+        foreach ($files as $file) {
+            $source_file = $source_path . $file;
+            $destination_file = $destination_path . $file;
+            if (is_file($source_file)) {
+                $source_file_ext = pathinfo($source_file, PATHINFO_EXTENSION);
+                
+                if ( !( empty( $extension ) || in_array($source_file_ext, $extension) ) ) break;
+
+                if ( in_array($file, $exclude) ) break;
+
+                if ( file_exists( $destination_file ) ){
+                    $str_result .=  "$destination_file Already exist<br>";
+                } elseif ( copy($source_file, $destination_file) ){
+                    $copied ++;
+                    $str_result .=  "$source_file Succeessfuly copied to $destination_file<br>";
+                } else {
+                    $str_result .=  "$source_file Failed to copy<br>";
+                }   
+            }
+        }
+
+        $str_result .= "$copied file(s) copied from $source_path<br>";
+
+        if( $echo_result ) echo wp_kses_post("<p>$str_result</p>");
+    }
 }
